@@ -1,0 +1,33 @@
+init model
+Epoch 1 started
+train loss:1.9689505100250244; train accuracy 27.90%: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████| 782/782 [02:03<00:00,  6.31it/s]
+Epoch 1, train loss: 1.9689505100250244, train acc: 27.90%, valid loss: 2.0472028211593627, valid_acc: 26.52%, lr:0.001
+Epoch 2 started
+train loss:1.8951630592346191; train accuracy 30.99%: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████| 782/782 [02:01<00:00,  6.41it/s]
+Epoch 2, train loss: 1.8951630592346191, train acc: 30.99%, valid loss: 1.9516975006103516, valid_acc: 29.08%, lr:0.00095
+Epoch 3 started
+train loss:1.9430075883865356; train accuracy 28.35%:  45%|███████████████████████████████████████▏                                               | 352/782 [00:56<01:08,  6.24it/s]
+Traceback (most recent call last):
+  File "/nvme1/data_rt/LR/flops/train_cnn.py", line 72, in <module>
+    trainer.train()
+  File "/nvme1/data_rt/LR/flops/trainer_a.py", line 104, in train
+    global_step = self.step(epoch, global_step)
+  File "/nvme1/data_rt/LR/flops/trainer_a.py", line 209, in step
+    loss, output = self.zo_step_tensor_wise(self.model, data, target, self.sample_n)
+  File "/nvme1/data_rt/LR/flops/trainer_a.py", line 373, in zo_step_tensor_wise
+    loss2, _ = self.zo_forward(model, data, target)
+  File "/nvme1/data_rt/LR/flops/trainer_a.py", line 317, in zo_forward
+    model.eval()
+  File "/home/rt/data/miniconda3/envs/LR/lib/python3.9/site-packages/torch/nn/modules/module.py", line 2413, in eval
+    return self.train(False)
+  File "/home/rt/data/miniconda3/envs/LR/lib/python3.9/site-packages/torch/nn/modules/module.py", line 2394, in train
+    module.train(mode)
+  File "/home/rt/data/miniconda3/envs/LR/lib/python3.9/site-packages/torch/nn/modules/module.py", line 2394, in train
+    module.train(mode)
+  File "/home/rt/data/miniconda3/envs/LR/lib/python3.9/site-packages/torch/nn/modules/module.py", line 2392, in train
+    self.training = mode
+  File "/home/rt/data/miniconda3/envs/LR/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1700, in __setattr__
+    if isinstance(value, Parameter):
+  File "/home/rt/data/miniconda3/envs/LR/lib/python3.9/site-packages/torch/nn/parameter.py", line 9, in __instancecheck__
+    return super().__instancecheck__(instance) or (
+KeyboardInterrupt

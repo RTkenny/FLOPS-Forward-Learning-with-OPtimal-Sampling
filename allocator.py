@@ -1,4 +1,5 @@
 import math
+import torch
 import numpy as np
 
 def allocate_budget(current_epoch: int, total_epochs: int, n: int, per_repeat: int, ratio: float = 0.8):
@@ -50,33 +51,65 @@ def gaussain_allocater(loss_values, budget, correlation_matrix):
     return allocated_budget
 
 
-def bernoulli_allocater(loss_values, budget, p):
-    mean_loss = np.mean(loss_values)
-    allocated_budget = np.full(len(loss_values), budget / len(loss_values))
+def bernoulli_allocater(data: torch.Tensor, target: torch.Tensor, loss_values: torch.Tensor, sample_n: int, p: int):
+    # p is a number between 0 and 1
+    bs = data.shape[0]
+    budget = bs * sample_n
+    mean_loss = torch.mean(loss_values)
+    equal_budget, allocated_budget = torch.full((bs,), sample_n, dtype=torch.int, device=data.device), torch.full((bs,), sample_n, dtype=torch.int, device=data.device)
 
-    for i in range(len(loss_values)):
+    # print(equal_budget)
+    for i in range(bs):
         if loss_values[i] < mean_loss:
             if np.random.rand() < p:
-                allocated_budget[i] /= 2
+                allocated_budget[i] = allocated_budget[i] // 2
 
-    pruned_budget = budget - np.sum(allocated_budget)
-    unpruned_indices = [i for i in range(len(loss_values)) if loss_values[i] >= mean_loss or np.random.rand() >= p]
+    pruned_budget = budget - torch.sum(allocated_budget)
+    unpruned_indices = ~(allocated_budget < equal_budget)
+    # print(f'unpruned_indices: {unpruned_indices}')
+    
+    if torch.sum(unpruned_indices)>0:
+        reallocated_budget = pruned_budget // torch.sum(unpruned_indices)
+        allocated_budget[unpruned_indices] += reallocated_budget
 
-    if unpruned_indices:
-        reallocated_budget = pruned_budget / len(unpruned_indices)
-        for i in unpruned_indices:
-            allocated_budget[i] += reallocated_budget
+    diff = torch.sum(equal_budget) - torch.sum(allocated_budget)
+    diff = diff.item()
+    if diff >= 0:
+        unpruned_indexs = torch.where(unpruned_indices)[0]
+        for i in range(diff):
+            random_index = np.random.choice(unpruned_indexs.cpu().numpy())
+            allocated_budget[random_index] += 1
+        # unpruned_indexs = torch.where(unpruned_indices)[0]
+        # random_index = np.random.choice(unpruned_indexs.numpy())
+        # random_index = np.random.choice(bs)
+        # allocated_budget[random_index] += diff
+    else:
+        raise ValueError("The allocated budget is greater than the total budget")
+    
+    # print(f"diff: {diff}")
+    # print(f'sum of allocated_budget: {torch.sum(allocated_budget)}')
 
-    return allocated_budget
+    data = data.repeat_interleave(allocated_budget, dim=0)
+    target = target.repeat_interleave(allocated_budget, dim=0)
+
+    dataset = torch.utils.data.TensorDataset(data, target)
+    bernoulli_dataloader = torch.utils.data.DataLoader(dataset, batch_size=bs, shuffle=True)
+    return bernoulli_dataloader
 
 if __name__ == '__main__':
 
-    budget = 6400
-    n = 128
-    per_repeat = 20
+    # budget = 6400
+    # n = 128
+    # per_repeat = 20
+    # sequence = allocate_budget(4,4, n, per_repeat, 0.5)
+    # if isinstance(sequence, list):
+    #     print(f"The sequence is: {sequence}")
+    # else:
+    #     print(sequence)
 
-    sequence = allocate_budget(4,4, n, per_repeat, 0.5)
-    if isinstance(sequence, list):
-        print(f"The sequence is: {sequence}")
-    else:
-        print(sequence)
+    a = np.array([4, 2, 4])
+    b = np.array([4, 4, 4])
+    c = np.where(~(a<b))
+    print(np.sum(~(a<b)))
+    print(c)
+    

@@ -16,7 +16,7 @@ from accelerate.utils import ProjectConfiguration, set_seed
 from accelerate import Accelerator
 from transformers import Trainer, TrainingArguments
 from accelerate.utils import DistributedDataParallelKwargs
-from allocator import allocate_budget
+from allocator import allocate_budget, bernoulli_allocater
 
 @dataclass
 class TrainerArgs(TrainingArguments):
@@ -30,7 +30,7 @@ class TrainerArgs(TrainingArguments):
     epochs: int = 10
     is_log: bool = False
     log_interval: int = 10
-    gradient_estimation_strategy: str = 'bp' # 'lr', 'allocater', 'vanilla_lr', 'tensor_wise_perturb', 'tensor_wise_perturb_reuse', 'perturb_outside_all_params', 'perturb_outside_tensor_wise', 'non-diff'
+    gradient_estimation_strategy: str = 'bp' # 'perturb_outside_all_params', 'perturb_outside_tensor_wise', 'perturb_outside_all_params_allocator', 'bp'
     tracker_kwargs: Dict[str, Any] = field(default_factory=dict)
     accelerator_kwargs: Dict[str, Any] = field(default_factory=dict)
     project_kwargs: Dict[str, Any] = field(default_factory=dict)
@@ -105,12 +105,6 @@ class Trainer(Trainer):
 
     def step(self, epoch, global_step):
         info = defaultdict(list)
-        # train_count = torch.tensor(0, dtype=torch.double, device=device)
-        # train_loss = torch.tensor(0, dtype=torch.double, device=device)
-        # train_accuracy = torch.tensor(0, dtype=torch.double, device=device)
-        # train_count = 0
-        # train_loss = 0.
-        # train_accuracy = 0
         print(f"Epoch {epoch + 1} started")
         self.model.train()
         with tqdm(self.train_loader) as tqdm_range:
@@ -118,92 +112,9 @@ class Trainer(Trainer):
                 device = self.accelerator.device
                 data, target = data.to(device), target.to(device)
                 self.optimizer.zero_grad()
-                if self.gradient_estimation_strategy == 'allocater':
-                    # version 3 budget allocating
-                    with torch.no_grad():
-                        bs = data.shape[0]
-                        output, _ = self.model(data, add_noise=False)
-                        loss = self.criterion(output, target)
-                        sorted_loss, indices = torch.sort(loss, descending=False)
-                        loss_bsl = torch.mean(loss).detach()
-                        ranks = torch.empty_like(loss, device=self.device)
-                        ranks[indices] = torch.arange(1, len(loss) + 1, dtype=torch.float, device=self.device)
-                        repeats = torch.empty_like(loss, dtype=torch.int, device=self.device)
-                        repeats[indices] = torch.tensor(allocate_budget(epoch + 1, self.epochs, bs, self.sample_n),
-                                                        dtype=torch.int, device=self.device)
-                        
-                    repeats = torch.full((bs,), fill_value=self.sample_n, dtype=torch.int, device=self.device)
-                    data = data.repeat_interleave(repeats, dim=0)
-                    target = target.repeat_interleave(repeats, dim=0)
-                    output, _ = self.model(data, add_noise=True)
-                    loss = self.criterion(output, target)
-                    self.model.backward(loss-loss_bsl)
-                    
-                elif self.gradient_estimation_strategy == 'vanilla_lr':
-                    # with torch.no_grad():
-                    #     bs = data.shape[0]
-                    #     output, _ = model(data)
-                    #     loss = criterion(output, target)
-
-                    bs = data.shape[0]
-                    repeats = torch.full((bs,), fill_value=self.sample_n, dtype=torch.int, device=device)
-                    data = data.repeat_interleave(repeats, dim=0)
-                    target = target.repeat_interleave(repeats, dim=0)
-                    # loss_bsl = loss.repeat_interleave(repeats, dim=0)
-
-                    # data = data.repeat(self.sample_n, 1, 1, 1)
-                    # target = target.repeat(self.sample_n)
-
-                    output, _ = self.model(data, add_noise=True)
-                    loss = self.criterion(output, target)
-                    # mloss = torch.full((data.shape[0],), fill_value=torch.mean(loss), device=device)
-                    # model.backward(mloss)
-                    self.model.backward(loss)
-                    # model.backward(loss-loss_bsl)
-                    
-                elif self.gradient_estimation_strategy == 'tensor_wise_perturb':
-                    module_len = self.model.module_len
-
-                    # bs = data.shape[0]
-                    # repeats = torch.full((bs,), fill_value=sample_n, dtype=torch.int, device=self.device)
-                    # data = data.repeat_interleave(repeats, dim=0)
-                    # target = target.repeat_interleave(repeats, dim=0)
-
-                    data = data.repeat(self.sample_n, 1, 1, 1)
-                    target = target.repeat(self.sample_n)
-
-                    with torch.no_grad():
-                        for i in range(module_len):
-                            add_noise = [True if j == i else False for j in range(module_len)]
-                            output, _ = self.model(data, add_noise=add_noise)
-                            loss = self.criterion(output, target)
-                            self.model.backward(loss)
-                            # torch.cuda.empty_cache()
-                    
-                elif self.gradient_estimation_strategy == 'tensor_wise_perturb_reuse':
-                    # with torch.no_grad():
-                    #     bs = data.shape[0]
-                    #     output, _ = self.model(data, add_noise=[False, False])
-                    #     loss = self.criterion(output, target)
-                    #     loss_bsl = torch.mean(loss).detach()
-
-                    module_len = self.model.module_len
-                    # bs = data.shape[0]
-                    # repeats = torch.full((bs,), fill_value=self.sample_n, dtype=torch.int, device=self.device)
-                    # data = data.repeat_interleave(repeats, dim=0)
-                    # target = target.repeat_interleave(repeats, dim=0)
-                    target = target.repeat(self.sample_n)
-                    with torch.no_grad():
-                        for i in range(module_len):
-                            add_noise = [True if j == i else False for j in range(module_len)]
-                            output, _ = self.model(data, add_noise=add_noise, repeats=self.sample_n)
-                            loss = self.criterion(output, target)
-                            self.model.backward(loss)
-
-                elif self.gradient_estimation_strategy == 'perturb_outside_all_params':
+                if self.gradient_estimation_strategy == 'perturb_outside_all_params':
                     loss, output = self.zo_step_all_params(self.model, data, target, self.sample_n)
                     bs = data.shape[0]
-                    # self.accelerator.backward(loss)
 
                 elif self.gradient_estimation_strategy == 'perturb_outside_tensor_wise':
                     loss, output = self.zo_step_tensor_wise(self.model, data, target, self.sample_n)
@@ -212,21 +123,12 @@ class Trainer(Trainer):
                     #     self.accelerator.backward(loss)
                     # except:
                     #     pass
-
-                elif self.gradient_estimation_strategy == 'non-diff':
-                    # optimizing non-differentiable objective
+                
+                elif self.gradient_estimation_strategy == 'perturb_outside_all_params_allocator':
+                    loss, output = self.zo_step_all_params_allocator(self.model, data, target, self.sample_n)
                     bs = data.shape[0]
-                    repeats = torch.full((bs,), fill_value=self.sample_n, dtype=torch.int, device=self.device)
-                    data = data.repeat_interleave(repeats, dim=0)
-                    target = target.repeat_interleave(repeats, dim=0)
-                    output, _ = self.model(data, add_noise=[False, True])
-                    loss = self.criterion(output, target)
-                    pred = output.argmax(dim=1, keepdim=True)
-                    acc = (pred.eq(target.view_as(pred))/-1).squeeze(-1)
-                    self.model.backward(acc)
-                        
+
                 elif self.gradient_estimation_strategy == 'bp':
-                    # print('BP training')
                     output, _ = self.model(data, add_noise=None)
                     loss = self.criterion(output, target)
                     loss = torch.mean(loss)
@@ -283,10 +185,12 @@ class Trainer(Trainer):
             print(f'Epoch {epoch + 1}, train loss: {tl}, train acc: {100*ta:.2f}%, valid loss: {valid_loss}, valid_acc: {100*correct:.2f}%, lr:{self.scheduler.get_last_lr()[0]}')
         return global_step
     
-    def compute_loss(self, model, data, target):
+    def compute_loss(self, model, data, target, return_mean=True):
         output, _ = model(data)
         loss = self.criterion(output, target)
-        return loss.mean(), output
+        if return_mean:
+            return loss.mean(), output
+        return loss, output
     
     def perturb_all_params(self, random_seed=None, scaling_factor=1):
         """
@@ -311,21 +215,21 @@ class Trainer(Trainer):
                 z = torch.normal(mean=0, std=1, size=param.data.size(), device=param.data.device, dtype=param.data.dtype)
                 param.data = param.data + scaling_factor * z * self.zo_eps
 
-    def zo_forward(self, model, data, target, retain_graph=False):
+    def zo_forward(self, model, data, target, retain_graph=False, return_mean=True):
         """
         Get (no gradient) loss from the model. Dropout is turned off too.
         """
         model.eval()
         if not retain_graph:
             with torch.inference_mode():
-                loss, output = self.compute_loss(model, data, target)
+                loss, output = self.compute_loss(model, data, target, return_mean)
         else:
-            loss, output = self.compute_loss(model, data, target)
+            loss, output = self.compute_loss(model, data, target, return_mean)
         return loss.detach(), output
 
     def zo_step_all_params(self, model, data, target, sample_budget=1):
         """
-        Estimate gradient by MeZO. Return the loss from f(theta + z)
+        Estimate gradient by perturbing all params together. Return the loss from f(theta + z)
         """
 
         # What parameters to optimize 
@@ -333,19 +237,48 @@ class Trainer(Trainer):
         for name, param in model.named_parameters():
             if param.requires_grad:
                 self.named_parameters_to_optim.append((name, param))
-        # print(len(self.named_parameters_to_optim))
 
         for _ in range(sample_budget):
+            self.zo_random_seed = np.random.randint(1000000000)
+
+            self.perturb_all_params(scaling_factor=1)
+            loss1, _ = self.zo_forward(model, data, target)
+            self.perturb_all_params(scaling_factor=-2)
+            loss2, _ = self.zo_forward(model, data, target)
+
+            self.projected_grad = ((loss1 - loss2) / (2 * self.zo_eps)).item()
+            self.projected_grad = self.projected_grad / float(sample_budget)
+
+            self.perturb_all_params(scaling_factor=1)
+            self.zo_backward()
+
+        loss, output = self.zo_forward(model, data, target)
+        return loss, output
+    
+    def zo_step_all_params_allocator(self, model, data, target, sample_budget=1):
+        """
+        Estimate gradient by MeZO. Return the loss from f(theta + z)
+        """
+        loss_values, _ = self.zo_forward(model, data, target, return_mean=False)
+        bernoulli_dataloader = bernoulli_allocater(data, target, loss_values, sample_budget, 0.1)
+
+        # What parameters to optimize 
+        self.named_parameters_to_optim = []
+        for name, param in model.named_parameters():
+            if param.requires_grad:
+                self.named_parameters_to_optim.append((name, param))
+
+        for alloc_data, alloc_target in bernoulli_dataloader:
             # Sample the random seed for sampling z
             self.zo_random_seed = np.random.randint(1000000000)
 
             # First function evaluation
             self.perturb_all_params(scaling_factor=1)
-            loss1, _ = self.zo_forward(model, data, target)
+            loss1, _ = self.zo_forward(model, alloc_data, alloc_target)
 
             # Second function evaluation
             self.perturb_all_params(scaling_factor=-2)
-            loss2, _ = self.zo_forward(model, data, target)
+            loss2, _ = self.zo_forward(model, alloc_data, alloc_target)
 
             self.projected_grad = ((loss1 - loss2) / (2 * self.zo_eps)).item()
             self.projected_grad = self.projected_grad / float(sample_budget)

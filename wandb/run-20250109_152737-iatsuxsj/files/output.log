@@ -1,0 +1,11 @@
+Training...
+Epoch 1
+  0%|                                                                                                                                           | 0/938 [00:01<?, ?it/s]
+Traceback (most recent call last):
+  File "/nvme1/data_rt/LR/flops/train_mlp.py", line 68, in <module>
+    trainer.train()
+  File "/nvme1/data_rt/LR/flops/trainer_a.py", line 98, in train
+    global_step = self.step(epoch, global_step)
+  File "/nvme1/data_rt/LR/flops/trainer_a.py", line 243, in step
+    ta = torch.mean(torch.tensor(info['accuracy'])).cpu().detach().numpy()
+TypeError: only integer tensors of a single element can be converted to an index

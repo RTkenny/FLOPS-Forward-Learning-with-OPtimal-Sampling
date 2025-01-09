@@ -1,0 +1,18 @@
+init model
+Training...
+Epoch 1 started
+  0%|                                                                                                                                                       | 0/235 [00:01<?, ?it/s]
+Traceback (most recent call last):
+  File "/nvme1/data_rt/LR/flops/train_mlp.py", line 68, in <module>
+    trainer.train()
+  File "/nvme1/data_rt/LR/flops/trainer_a.py", line 103, in train
+    global_step = self.step(epoch, global_step)
+  File "/nvme1/data_rt/LR/flops/trainer_a.py", line 249, in step
+    self.optimizer.step()
+  File "/home/rt/data/miniconda3/envs/LR/lib/python3.9/site-packages/accelerate/optimizer.py", line 159, in step
+    self.scaler.step(self.optimizer, closure)
+  File "/home/rt/data/miniconda3/envs/LR/lib/python3.9/site-packages/torch/cuda/amp/grad_scaler.py", line 385, in step
+    self._check_scale_growth_tracker("step")
+  File "/home/rt/data/miniconda3/envs/LR/lib/python3.9/site-packages/torch/cuda/amp/grad_scaler.py", line 154, in _check_scale_growth_tracker
+    assert self._scale is not None, (
+AssertionError: Attempted step but _scale is None.  This may indicate your script did not use scaler.scale(loss or outputs) earlier in the iteration.

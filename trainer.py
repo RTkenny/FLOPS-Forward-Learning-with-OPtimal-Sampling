@@ -428,8 +428,3 @@ class Trainer(Trainer):
             valid_loss /= valid_count
             correct /= valid_count
         return valid_loss, correct
-
-if __name__ == '__main__':
-    a = torch.tensor([[1,2,3],[4,5,6]])
-    print(a.shape)
-    print(a.repeat(3,))

@@ -1,0 +1,7 @@
+Training...
+Traceback (most recent call last):
+  File "/nvme1/data_rt/LR/flops/train_mlp.py", line 68, in <module>
+    trainer.train()
+  File "/nvme1/data_rt/LR/flops/trainer_a.py", line 97, in train
+    for epoch in range(self.first_epoch, epochs):
+AttributeError: 'Trainer' object has no attribute 'first_epoch'

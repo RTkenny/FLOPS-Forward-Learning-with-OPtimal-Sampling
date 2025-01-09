@@ -1,0 +1,19 @@
+Training...
+Epoch 1
+train loss:0.19670477509498596; train accuracy 90.62%: 100%|██████████████████████████████████████████████████████████████████████████████████████████████| 938/938 [00:07<00:00, 130.87it/s]
+Traceback (most recent call last):
+  File "/nvme1/data_rt/LR/flops/train_mlp.py", line 68, in <module>
+    trainer.train()
+  File "/nvme1/data_rt/LR/flops/trainer_a.py", line 98, in train
+    global_step = self.step(epoch, global_step)
+  File "/nvme1/data_rt/LR/flops/trainer_a.py", line 266, in step
+    self._save_checkpoint(epoch)
+  File "/nvme1/data_rt/LR/flops/trainer_a.py", line 403, in _save_checkpoint
+    torch.save(self.model.state_dict(), f'{self.output_dir}/model_{epoch}.pt')
+  File "/home/rt/data/miniconda3/envs/LR/lib/python3.9/site-packages/torch/serialization.py", line 628, in save
+    with _open_zipfile_writer(f) as opened_zipfile:
+  File "/home/rt/data/miniconda3/envs/LR/lib/python3.9/site-packages/torch/serialization.py", line 502, in _open_zipfile_writer
+    return container(name_or_buffer)
+  File "/home/rt/data/miniconda3/envs/LR/lib/python3.9/site-packages/torch/serialization.py", line 473, in __init__
+    super().__init__(torch._C.PyTorchFileWriter(self.name))
+RuntimeError: Parent directory ./output/mlp does not exist.

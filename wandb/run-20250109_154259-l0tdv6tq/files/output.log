@@ -1,0 +1,21 @@
+Training...
+Epoch 1
+train loss:0.28680890798568726; train accuracy 91.56%: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████| 938/938 [00:14<00:00, 66.45it/s]
+Epoch 2
+train loss:0.11539601534605026; train accuracy 96.51%: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████| 938/938 [00:14<00:00, 65.93it/s]
+Epoch 3
+train loss:0.08099960535764694; train accuracy 97.45%: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████| 938/938 [00:14<00:00, 63.11it/s]
+Epoch 4
+train loss:0.06280902773141861; train accuracy 97.97%: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████| 938/938 [00:13<00:00, 68.38it/s]
+Epoch 5
+train loss:0.0498296283185482; train accuracy 98.40%: 100%|██████████████████████████████████████████████████████████████████████████████████| 938/938 [00:13<00:00, 69.84it/s]
+Epoch 6
+train loss:0.038156960159540176; train accuracy 98.78%:  39%|████████████                   | 364/938 [00:04<00:07, 79.70it/s]
+Traceback (most recent call last):
+  File "/nvme1/data_rt/LR/flops/train_mlp.py", line 68, in <module>
+    trainer.train()
+  File "/nvme1/data_rt/LR/flops/trainer_a.py", line 98, in train
+    global_step = self.step(epoch, global_step)
+  File "/nvme1/data_rt/LR/flops/trainer_a.py", line 242, in step
+    tl = torch.mean(torch.tensor(info['loss'])).cpu().detach().numpy()
+KeyboardInterrupt

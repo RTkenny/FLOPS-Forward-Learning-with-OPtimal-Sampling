@@ -1,0 +1,36 @@
+init model
+Training...
+Epoch 1 started
+  0%|                                                                                                                                                                                    | 0/235 [00:01<?, ?it/s]
+Traceback (most recent call last):
+  File "/nvme1/data_rt/LR/flops/train_mlp.py", line 68, in <module>
+    trainer.train()
+  File "/nvme1/data_rt/LR/flops/trainer_a.py", line 100, in train
+    global_step = self.step(epoch, global_step)
+  File "/nvme1/data_rt/LR/flops/trainer_a.py", line 221, in step
+    output, _ = self.model(data, add_noise=None)
+  File "/home/rt/data/miniconda3/envs/LR/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1511, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/rt/data/miniconda3/envs/LR/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1520, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/rt/data/miniconda3/envs/LR/lib/python3.9/site-packages/torch/nn/parallel/distributed.py", line 1523, in forward
+    else self._run_ddp_forward(*inputs, **kwargs)
+  File "/home/rt/data/miniconda3/envs/LR/lib/python3.9/site-packages/torch/nn/parallel/distributed.py", line 1359, in _run_ddp_forward
+    return self.module(*inputs, **kwargs)  # type: ignore[index]
+  File "/home/rt/data/miniconda3/envs/LR/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1511, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/rt/data/miniconda3/envs/LR/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1520, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/rt/data/miniconda3/envs/LR/lib/python3.9/site-packages/accelerate/utils/operations.py", line 820, in forward
+    return model_forward(*args, **kwargs)
+  File "/home/rt/data/miniconda3/envs/LR/lib/python3.9/site-packages/accelerate/utils/operations.py", line 808, in __call__
+    return convert_to_fp32(self.model_forward(*args, **kwargs))
+  File "/home/rt/data/miniconda3/envs/LR/lib/python3.9/site-packages/torch/amp/autocast_mode.py", line 16, in decorate_autocast
+    return func(*args, **kwargs)
+  File "/nvme1/data_rt/LR/flops/models/my_mlp_modeling.py", line 39, in forward
+    x = self.acti(self.fc1(x, add_noise=add_noise))
+  File "/home/rt/data/miniconda3/envs/LR/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1511, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/rt/data/miniconda3/envs/LR/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1520, in _call_impl
+    return forward_call(*args, **kwargs)
+TypeError: forward() got an unexpected keyword argument 'add_noise'

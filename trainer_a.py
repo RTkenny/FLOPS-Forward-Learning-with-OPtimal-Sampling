@@ -16,13 +16,14 @@ from accelerate.utils import ProjectConfiguration, set_seed
 from accelerate import Accelerator
 from transformers import Trainer, TrainingArguments
 from accelerate.utils import DistributedDataParallelKwargs
-from allocator import allocate_budget, bernoulli_allocater
+from allocator import bernoulli_allocater, gaussian_allocater
 
 @dataclass
 class TrainerArgs(TrainingArguments):
     output_dir: str = './checkpoints' # checkpoint_dir
     log_with: Optional[Literal["wandb", "tensorboard"]] = None
     tracker_project_name: str = "flops"
+    allocator_type: str = 'bernoulli'
     per_device_train_batch_size: int = 64
     gradient_accumulation_steps: int = 1
     per_device_eval_batch_size: int = 64
@@ -49,6 +50,7 @@ class Trainer(Trainer):
         self.train_dataset = train_dataset
         self.eval_dataset = eval_dataset
         self.epochs = args.epochs
+        self.allocator_type = args.allocator_type
         self.per_device_train_batch_size = args.per_device_train_batch_size
         self.per_device_eval_batch_size = args.per_device_eval_batch_size
         self.gradient_estimation_strategy = args.gradient_estimation_strategy
@@ -125,7 +127,11 @@ class Trainer(Trainer):
                     #     pass
                 
                 elif self.gradient_estimation_strategy == 'perturb_outside_all_params_allocator':
-                    loss, output = self.zo_step_all_params_allocator(self.model, data, target, self.sample_n)
+                    if epoch <1:
+                        p = 0.3
+                    else:
+                        p = 0.01
+                    loss, output = self.zo_step_all_params_allocator(self.model, data, target, self.sample_n, p)
                     bs = data.shape[0]
 
                 elif self.gradient_estimation_strategy == 'bp':
@@ -255,12 +261,15 @@ class Trainer(Trainer):
         loss, output = self.zo_forward(model, data, target)
         return loss, output
     
-    def zo_step_all_params_allocator(self, model, data, target, sample_budget=1):
+    def zo_step_all_params_allocator(self, model, data, target, sample_budget=1, p=0.1):
         """
-        Estimate gradient by MeZO. Return the loss from f(theta + z)
+        Estimate gradient with optimal sampling, either using bernoulli allocator or gaussian one. Return the loss from f(theta + z)
         """
         loss_values, _ = self.zo_forward(model, data, target, return_mean=False)
-        bernoulli_dataloader = bernoulli_allocater(data, target, loss_values, sample_budget, 0.1)
+        if self.allocator_type == 'gaussian':
+            ops_dataloader = gaussian_allocater(data, target, loss_values, sample_budget)
+        elif self.allocator_type == 'bernoulli':
+            ops_dataloader = bernoulli_allocater(data, target, loss_values, sample_budget, p)
 
         # What parameters to optimize 
         self.named_parameters_to_optim = []
@@ -268,7 +277,7 @@ class Trainer(Trainer):
             if param.requires_grad:
                 self.named_parameters_to_optim.append((name, param))
 
-        for alloc_data, alloc_target in bernoulli_dataloader:
+        for alloc_data, alloc_target in ops_dataloader:
             # Sample the random seed for sampling z
             self.zo_random_seed = np.random.randint(1000000000)
 
@@ -351,10 +360,3 @@ class Trainer(Trainer):
     def _save_checkpoint(self, epoch):
         torch.save(self.model.state_dict(), f'{self.output_dir}/model_{epoch}.pt')
         print(f"Model saved at {self.output_dir}/model_{epoch}.pt")
-
-
-if __name__ == "__main__":
-    args = TrainerArgs()
-    print(args.to_dict())
-    print('-'*100)
-    print(args.log_with)

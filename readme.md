@@ -1,7 +1,7 @@
 <!-- <div align="center"> -->
 
 <!-- TITLE -->
-# **FLOPS: Forward Learning with OPtimal Sampling**
+# **FLOPS: Forward Learning with OPtimal Sampling (ICLR2025)**
 ![FLOPS](assets/flops.png)
 
 <!-- DESCRIPTION -->
@@ -15,6 +15,11 @@ conda create -n FLOPS python=3.9
 conda activate FLOPS
 pip install -r requirements.txt
 ```
+
+## Usage
+We provide two trainer (`trainer.py` and `trainer_a.py`) for different implementation of forward learning. The first implementation need to modify the `nn.module` for the inplace gradient computation. The second implementation inject noise through state_dict, which is model-agnostic.
+
+The optimal sampling procedure is implemented in the `allocator.py`. Different datasets preprocessing is implemented the `data/dataset.py`. 
 
 ## Runing the experiments
 

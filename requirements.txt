@@ -1,0 +1,7 @@
+numpy
+torch==2.2.1
+torchvision
+tqdm
+datasets==2.19.1
+transformers==4.45.2
+accelerate==0.34.2
